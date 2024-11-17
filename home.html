@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="home.css">
+    <title>Gestión de Citas Médicas</title>
+    
+</head>
+<body>
+
+<header>
+    <h1>Gestión de Citas Médicas</h1>
+</header>
+
+<!-- Login Section -->
+<div class="container">
+    <div class="login-section" id="loginSection">
+        <h2>Iniciar sesión</h2>
+        <form id="loginForm">
+            <label for="usuario">Usuario:</label>
+            <input type="text" id="usuario" required>
+
+            <label for="clave">Clave:</label>
+            <input type="password" id="clave" required>
+
+            <button type="submit">Iniciar sesión</button>
+        </form>
+        <div id="loginError" class="login-error"></div>
+    </div>
+
+    <!-- Médico Section (Crear citas) -->
+    <div class="form-section" id="medicoSection" style="display: none;">
+        <h2>Formulario del Médico</h2>
+        <form id="citaForm">
+            <label for="medico">Médico:</label>
+            <input type="text" id="medico" disabled> <!-- El nombre del médico será agregado automáticamente -->
+
+            <label for="especialidad">Especialidad:</label>
+            <select id="especialidad" required>
+                <option value="Cardiología">Cardiología</option>
+                <option value="Dermatología">Dermatología</option>
+                <option value="Pediatría">Pediatría</option>
+            </select>
+
+            <label for="fecha">Fecha de la Cita:</label>
+            <input type="date" id="fecha" required>
+
+            <label for="hora">Hora de la Cita:</label>
+            <input type="time" id="hora" required>
+
+            <button type="submit">Agregar Cita</button>
+        </form>
+        
+        <h3>Citas Agregadas por el Médico</h3>
+        <table id="tablaCitasMedico">
+            <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Especialidad</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las citas del médico se mostrarán aquí -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paciente Section (Consultar Citas) -->
+    <div class="form-section" id="pacienteSection" style="display: none;">
+        <h2>Consultar Citas</h2>
+
+        <!-- Filtros para el paciente -->
+        <!-- Filtro por Especialidad -->
+<label for="filtroEspecialidad">Filtrar por Especialidad:</label>
+<select id="filtroEspecialidad" onchange="filtrarCitas()">
+    <option value="">-----</option>
+    <option value="Todas">Todas</option>
+    <option value="Cardiología">Cardiología</option>
+    <option value="Dermatología">Dermatología</option>
+    <option value="Pediatría">Pediatría</option>
+</select>
+
+<!-- Filtro por Fecha -->
+<label for="filtroFecha">Filtrar por Fecha:</label>
+<input type="date" id="filtroFecha" onchange="filtrarCitas()">
+
+
+        <table id="tablaCitasPaciente">
+            <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Médico</th>
+                    <th>Especialidad</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las citas se mostrarán aquí -->
+            </tbody>
+        </table>
+    </div>
+
+    <button id="logoutButton" class="logout-button" onclick="cerrarSesion()">Cerrar sesión</button>
+
+</div>
+
+<script>
+    // Datos simulados para las citas médicas
+    const citas = [
+        { paciente: "Juan Pérez", medico: "Dr. Juan Pérez", especialidad: "Cardiología", fecha: "2024-11-20", hora: "10:00" },
+        { paciente: "Ana García", medico: "Dr. Juan Pérez", especialidad: "Dermatología", fecha: "2024-11-20", hora: "11:00" },
+        { paciente: "Carlos Martínez", medico: "Dr. Juan Pérez", especialidad: "Pediatría", fecha: "2024-11-21", hora: "09:00" },
+        { paciente: "Lucía Sánchez", medico: "Dr. Juan Pérez", especialidad: "Cardiología", fecha: "2024-11-22", hora: "15:00" },
+    ];
+
+    const citasMedico = []; // Array vacío donde el médico puede agregar sus citas
+
+    const usuarios = {
+        paciente: { usuario: "paciente", clave: "paciente123" },
+        medico: { usuario: "doctor", clave: "doctor123", nombre: "Dr. Juan Pérez" } // Nombre del médico
+    };
+
+    // Función para manejar el login
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const usuario = document.getElementById('usuario').value;
+        const clave = document.getElementById('clave').value;
+        const loginError = document.getElementById('loginError');
+
+        if (usuario === usuarios.paciente.usuario && clave === usuarios.paciente.clave) {
+            loginError.textContent = ''; // Limpiar error
+            mostrarPaciente();
+        } else if (usuario === usuarios.medico.usuario && clave === usuarios.medico.clave) {
+            loginError.textContent = ''; // Limpiar error
+            mostrarMedico();
+        } else {
+            loginError.textContent = 'Usuario o clave incorrectos';
+        }
+    });
+
+    // Función para mostrar la interfaz del Paciente
+    function mostrarPaciente() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('pacienteSection').style.display = 'block';
+        document.getElementById('medicoSection').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'block';
+
+        mostrarCitasPaciente(); // Mostrar citas al paciente
+    }
+
+    // Función para mostrar la interfaz del Médico
+    function mostrarMedico() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('medicoSection').style.display = 'block';
+        document.getElementById('pacienteSection').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'block';
+
+        // Establecer el nombre del médico en el formulario
+        document.getElementById('medico').value = usuarios.medico.nombre;
+    }
+
+    // Función para agregar una cita (solo para el médico)
+    document.getElementById('citaForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const especialidad = document.getElementById('especialidad').value;
+        const fecha = document.getElementById('fecha').value;
+        const hora = document.getElementById('hora').value;
+
+        // Agregar cita a la lista del médico
+        citasMedico.push({ medico: usuarios.medico.nombre, especialidad, fecha, hora });
+
+        mostrarCitasMedico();
+    });
+
+    // Mostrar citas del paciente filtradas por especialidad y fecha
+    // Mostrar citas del paciente filtradas por especialidad y fecha
+// Mostrar citas del paciente filtradas por especialidad y fecha
+function filtrarCitas() {
+    const filtroEspecialidad = document.getElementById('filtroEspecialidad').value;
+    const filtroFecha = document.getElementById('filtroFecha').value;
+
+    // Si no se ha seleccionado una opción válida en especialidad o en fecha (o está en blanco), no se deben mostrar citas
+    if (filtroEspecialidad === "" && filtroFecha === "") {
+        mostrarCitasPaciente([]); // Pasamos un array vacío para no mostrar citas
+        return;
+    }
+
+    // Si se selecciona "Todas" en especialidad, mostramos todas las citas.
+    const citasFiltradas = citas.filter(cita => {
+        const cumpleEspecialidad = filtroEspecialidad && filtroEspecialidad !== "Todas" ? cita.especialidad === filtroEspecialidad : true;
+        const cumpleFecha = filtroFecha ? cita.fecha === filtroFecha : true;
+        return cumpleEspecialidad && cumpleFecha;
+    });
+
+    mostrarCitasPaciente(citasFiltradas);
+}
+
+// Mostrar citas del paciente
+// Mostrar citas del paciente filtradas por especialidad y fecha
+function filtrarCitas() {
+    const filtroEspecialidad = document.getElementById('filtroEspecialidad').value;
+    const filtroFecha = document.getElementById('filtroFecha').value;
+
+    // Si no se ha seleccionado una opción válida en especialidad o en fecha (o está en blanco), no se deben mostrar citas
+    if (filtroEspecialidad === "" && filtroFecha === "") {
+        mostrarCitasPaciente([]); // Pasamos un array vacío para no mostrar citas
+        return;
+    }
+
+    // Si se selecciona "Todas" en especialidad, mostramos todas las citas.
+    const citasFiltradas = citas.filter(cita => {
+        const cumpleEspecialidad = filtroEspecialidad && filtroEspecialidad !== "Todas" ? cita.especialidad === filtroEspecialidad : true;
+        const cumpleFecha = filtroFecha ? cita.fecha === filtroFecha : true;
+        return cumpleEspecialidad && cumpleFecha;
+    });
+
+    mostrarCitasPaciente(citasFiltradas);
+}
+
+// Mostrar citas del paciente
+function mostrarCitasPaciente(citasFiltradas = []) {
+    const tablaCitasPaciente = document.getElementById('tablaCitasPaciente').getElementsByTagName('tbody')[0];
+    tablaCitasPaciente.innerHTML = '';
+
+    // Si no hay citas filtradas, no agregamos ninguna fila a la tabla
+    if (citasFiltradas.length === 0) {
+        tablaCitasPaciente.innerHTML = '<tr><td colspan="5">No se encontraron citas</td></tr>';
+    }
+
+    citasFiltradas.forEach(cita => {
+        const fila = tablaCitasPaciente.insertRow();
+        fila.insertCell(0).textContent = cita.paciente;
+        fila.insertCell(1).textContent = cita.medico;
+        fila.insertCell(2).textContent = cita.especialidad;
+        fila.insertCell(3).textContent = cita.fecha;
+        fila.insertCell(4).textContent = cita.hora;
+    });
+}
+
+
+    // Mostrar citas del médico
+    // Mostrar citas del médico
+function mostrarCitasMedico() {
+    const tablaCitasMedico = document.getElementById('tablaCitasMedico').getElementsByTagName('tbody')[0];
+    tablaCitasMedico.innerHTML = '';
+
+    citasMedico.forEach(cita => {
+        const fila = tablaCitasMedico.insertRow();
+        fila.insertCell(0).textContent = cita.medico; // Mostrar el nombre del médico en lugar del paciente
+        fila.insertCell(1).textContent = cita.especialidad;
+        fila.insertCell(2).textContent = cita.fecha;
+        fila.insertCell(3).textContent = cita.hora;
+    });
+}
+
+
+    // Función para cerrar sesión
+    function cerrarSesion() {
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('medicoSection').style.display = 'none';
+        document.getElementById('pacienteSection').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'none';
+        document.getElementById('usuario').value = '';
+        document.getElementById('clave').value = '';
+    }
+</script>
+
+</body>
+</html>
